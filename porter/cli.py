@@ -71,10 +71,9 @@ def _parser():
                          'brought up on, none for one it was)')
     _romfs_at(po, 'with --install: ')
     po.add_argument('--romfs-container', action='store_true',
-                    help='have the app read the game\'s files straight out of your own NSPs instead of an extracted RomFS / DLC copy (DM_ROMFS_CONTAINER): the data pack '
-                         'keeps no copy, and porter install pushes your base game, its update and the DLC to the device as they are (from this folder, or from beside the '
-                         'pack) and the app reads them in place; prod.keys goes to the device the same way, never into the pack. The base game must be an NSP (the XCI '
-                         'reader is not written yet); --romfs-at does not apply')
+                    help='have the app read the game\'s files straight out of your own NSP or XCI instead of an extracted RomFS / DLC copy (DM_ROMFS_CONTAINER): the data pack '
+                         'keeps no copy, and porter install pushes your base game (NSP or XCI), its update and the DLC to the device as they are (from this folder, or from '
+                         'beside the pack) and the app reads them in place; prod.keys goes to the device the same way, never into the pack. --romfs-at does not apply')
     po.add_argument('--jobs', type=int, default=os.cpu_count() or 8)
     po.add_argument('--low-mem', action='store_true',
                     help='low-memory devices: the shader translation runs with at most two workers (the number follows the memory the device has '
