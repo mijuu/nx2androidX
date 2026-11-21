@@ -7,7 +7,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 os.environ.setdefault('NX2A_HOME', tempfile.mkdtemp(prefix='nx2a_test_home_'))
 
-from porter import datapack, profiles   # noqa: E402
+from porter import datapack, install, profiles   # noqa: E402
 
 NEO = '010043B013C5C000'
 
@@ -39,6 +39,17 @@ class ContainerPack(unittest.TestCase):
                                  containers=[('romfs.xci', xci, 70), (datapack.CONTAINER_UPDATE, upd, 50)], keys=[('prod.keys', keys, keys.stat().st_size)])
             self.assertIn(f'DM_ROMFS_CONTAINER={ff}/container/romfs.xci', (t / 'xci-data/env.txt').read_text())
             self.assertEqual(man['push']['container'][0], dict(dst='romfs.xci', src='game.xci', bytes=70))
+        finally:
+            shutil.rmtree(t, ignore_errors=True)
+
+    def test_install_push_finds_the_game_beside_the_pack(self):   # the manifest names a game file beside the pack; the installer looked inside it instead (SRW30's 14 GB XCI)
+        t = Path(tempfile.mkdtemp(prefix='nx2a_test_push_'))
+        try:
+            (t / 'game.xci').write_bytes(b'x' * 70); (t / 'out-data').mkdir()
+            man = {'push': {'container': [dict(dst='romfs.xci', src='game.xci', bytes=70)]}}
+            self.assertEqual(install.game_files(man, '/files', t / 'out-data')[0][0], (t / 'game.xci').resolve())
+            (t / 'game.xci').write_bytes(b'x')   # the same name at another size is not the file the port listed
+            with self.assertRaises(install.BuildError): install.game_files(man, '/files', t / 'out-data')
         finally:
             shutil.rmtree(t, ignore_errors=True)
 
