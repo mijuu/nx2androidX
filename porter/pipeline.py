@@ -11,7 +11,7 @@ from porter import config, datapack, dumps, fpslocker, install, paths, product_c
 from porter.revision import PLAYER_API_REVISION
 from porter.adb import NO_ADB, Adb, AdbError
 from porter.paths import DM, NXNATIVE
-from porter.upstream import BuildError, PROG, android_profile, game, nacp, nsp, profile_guess, say, trinity, uepak
+from porter.upstream import BuildError, PROG, android_profile, game, nacp, nsp, profile_guess, romfs, say, trinity, uepak
 
 PY = sys.executable
 # The overlay's font (Port.ui_font)
@@ -480,7 +480,7 @@ class Port:
     # ---- inputs: the folder's games and versions, the profile, the version to pack ----
     def inputs(self):
         o = self.o
-say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
+        say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
         self.app, self.fam = nsp.scan_nsps(o.folder, dumps.EXTS, o.keys, o.game)
         tid = f'{self.app:016X}'
         self.sync_profile(tid)   # the player's imported profile into dm/games, before the profile is read (a copy of an older import would hide the newer one)
@@ -617,10 +617,12 @@ say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
         bundled = self.bundled_update_src = self.fam['base'] if nsp.bundled_update(nx, o.keys, self.fam['base']) else None
         picks = nsp.pick_nsps(self.fam, self.have, self.versions, bundled)
         ex = self.work / 'extract'; ex.mkdir(parents=True, exist_ok=True)
-        need = sum(dumps.size(p) * (2 if dumps.compressed(p) else 1) for p in {p for b, u in picks.values() for p in (b, u) if p}) / 2**30 + 6
+        cont = bool(o.romfs_container)   # the RomFS is read out of the player's own file, never written (mount_romfs)
+        need = (2 + sum(dumps.size(p) for _, _, p in self.fam['dlc']) / 2**30 if cont
+                else sum(dumps.size(p) * (2 if dumps.compressed(p) else 1) for p in {p for b, u in picks.values() for p in (b, u) if p}) / 2**30 + 6)
         if nsp.free_gb(self.work) < need and not all((ex / v).exists() for v in self.versions): raise BuildError(f'less than {need:.0f} GB free on the volume of {self.work}')
         # NSZ / XCZ: only what a stage will read is decompressed, all in one stage before nx_extract runs (a version nsp.extract reuses reads nothing)
-        fresh = lambda v: (ex / v / 'ExeFS/main').exists() and (ex / v / 'RomFS' / g.get('romfs_marker')).exists()   # nsp.extract's reuse test
+        fresh = lambda v: (ex / v / 'ExeFS/main').exists() and (cont or (ex / v / 'RomFS' / g.get('romfs_marker')).exists())   # nsp.extract's reuse test
         zdlc = [p for _, _, p in self.fam['dlc'] if dumps.compressed(p)]
         # extract_aoc keys its reuse on the names, sizes and times of the NSPs it reads, decompressed ones here: with NSZ / XCZ DLC, porter keys it on those files instead
         dkey = nsp.fingerprint(sorted((t, p.name, p.stat().st_size, p.stat().st_mtime_ns) for t, _, p in self.fam['dlc']),
@@ -629,7 +631,7 @@ say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
         dlc_reused = bool(zdlc) and (self.work / 'aoc').is_dir() and nsp.reused(dkf, dkey) is not None
         m = self.unpack([p for v in self.versions if not fresh(v) for p in picks[v] if p] + ([] if dlc_reused else zdlc))
         picks = {v: tuple(m.get(p, p) if p else None for p in bu) for v, bu in picks.items()}
-        self.dirs = {ver: nsp.extract(nx, o.keys, ex, ver, *picks[ver], None, self.logs, g) for ver in self.versions}
+        self.dirs = {ver: nsp.extract(nx, o.keys, ex, ver, *picks[ver], None, self.logs, g, exefs_only=cont) for ver in self.versions}
         for d in self.dirs.values(): nsp.require_64bit(d / 'ExeFS', f'{g.get("name", g.id)} ({g.id})')
         bad = [] if self.derived else [f'{v}: {x}' for v in self.versions for x in nsp.build_mismatch(self.dirs[v], v, g)]
         if bad and self.provisional: raise BuildError(f'not the builds the provisional profile registers: {"; ".join(bad)}')
@@ -663,7 +665,7 @@ say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
             if zdlc: dkf.write_text(f'{dkey}\n')
             else: nsp.rmtree(dkf)
         self.sysdata = self.extract_sysdata(nx)
-        if o.romfs_container: self.containers()   # before drop_unpacked: an NSZ / XCZ is linked as the NSP it was decompressed to
+        if o.romfs_container: self.containers(); self.mount_romfs(ex, picks, nx)   # before drop_unpacked: an NSZ / XCZ is linked as the NSP it was decompressed to, which the mount then holds
         self.drop_unpacked()   # everything that reads them has run, and the shader stages that follow need the room
         self.base = next((self.dirs[v] for v in self.versions if picks[v][1] is None), self.dirs[self.versions[0]])
         self.app_name = o.app_name or nacp.name(self.base / 'control.nacp') or self.g.get('name', self.g.id)
@@ -718,6 +720,26 @@ say(f'game folder: {o.folder}' + (f' (game: {o.game.name})' if o.game else ''))
         self.container_keys = [(name, str(f), f.stat().st_size) for name, f in (('prod.keys', o.keys), ('title.keys', o.keys.with_name('title.keys'))) if f.is_file()]
         say(f'the game as its own {"XCI" if bsuf == ".xci" else "NSPs"} (--romfs-container): {Path(self.container_push[0][1]).name}' + (f', {m.get(upd, upd).name}' if upd else '')
             + (f', {len(dlc)} DLC' if dlc else '') + ' — pushed to the device as they are, read in place (the pack holds no copy)')
+
+    def mount_romfs(self, ex, picks, nx):
+        """--romfs-container: extract/v<N>/RomFS becomes a read-only view of the player's own file (dm/tools/romfs.py over nx_extract --serve, LibHac). The shader split,
+        the profile guesses and the Unreal paks read it as if it were extracted, decrypting only the bytes they read: the build writes no RomFS. Subprocesses mount the
+        same views from DM_ROMFS_MOUNTS"""
+        kept_base = next((p for n, p, _ in getattr(self, 'container_push', []) if n.startswith('romfs')), None)   # the file the installer pushes: an NSZ / XCZ's decompressed copy, kept in the build folder
+        kept_upd = next((p for n, p, _ in getattr(self, 'container_push', []) if n == datapack.CONTAINER_UPDATE), None)
+        mounts = []
+        for ver in self.versions:
+            base, upd = picks[ver]
+            if ver == self.pkg_ver and kept_base: base, upd = Path(kept_base), Path(kept_upd) if kept_upd else None
+            if upd is None and self.bundled_update_src: upd = base   # the base again: LibHac reads the Patch content meta it carries (the update the console runs)
+            root = ex / ver / 'RomFS'
+            romfs.mount(root, romfs.Container(base, upd, self.o.keys, str(nx)))
+            mounts.append({'path': str(root), 'base': str(base), 'update': str(upd) if upd else '', 'keys': str(self.o.keys), 'exe': str(nx)})
+        self.mounts = mounts
+        nsp.romfs = romfs   # files_under / ue_stamp: the reuse keys scan the mounted view
+        self.env['DM_ROMFS_MOUNTS'] = json.dumps(mounts)
+        self.env['DM_ROMFS_EXE'] = str(nx)
+        say(f"the RomFS is read from the player's own file ({', '.join(Path(m['base']).name for m in mounts)}): no extraction")
 
     # ---- NSZ / XCZ: decompressed for the stages that read the game files (porter.dumps) into <build folder>/tmp/dumps/, deleted once extracted ----
     def unpack(self, paths):
