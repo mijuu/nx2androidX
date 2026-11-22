@@ -314,6 +314,39 @@ class DataPack(unittest.TestCase):
         finally:
             shutil.rmtree(t, ignore_errors=True)
 
+    def test_a_container_app_pack_has_no_romfs_to_point_at(self):   # --romfs-container on the phone: the pack lists the player's NSPs and reads them in place (no RomFS at all)
+        t = Path(tempfile.mkdtemp(prefix='nx2a_test_pack_'))
+        try:
+            port = pipeline.Port(pipeline.Options(t))
+            port.g = game.load(NEO); port.app_name = 'NEO'; port.work_root = t / 'work'; port.o.app = True; port.o.out = t
+            port.o.romfs_container = True
+            port.work = t / 'work'
+            port.so = t / 'libdmplay.so'; port.so.write_bytes(b'ELF')
+            port.game = t / 'game'; port.game.mkdir()
+            port.fps_files = {}; port.fps_env = []; port.ap = None; port.pkg_ver = 'v196608'; port.display = '1.03'
+            port.patched = None; port.dmsv = None; port.aoc = None; port.sysdata = []
+            port.lang = 'en-US'; port.package = 'org.nx2a.test'
+            port.container_push = [('romfs.nsp', str(t / 'game.nsp'), 100)]
+            port.container_keys = [('prod.keys', str(t / 'prod.keys'), 1)]
+            captured = {}
+            def build(dst, **kw):
+                captured.update(kw); return {'files': 1, 'bytes': 1}
+            with mock.patch.object(pipeline.datapack, 'build', side_effect=build), \
+                 mock.patch.object(port, 'button_font', return_value=([], {})), \
+                 mock.patch.object(port, 'shared_font', return_value=([], {})), \
+                 mock.patch.object(port, 'theme_files', return_value={}), \
+                 mock.patch.object(port, 'icon_png', return_value=None), \
+                 mock.patch.object(port, 'drivers', return_value=[]), \
+                 mock.patch.object(port, 'loader_libs', return_value=[]), \
+                 mock.patch.object(port, 'lists', return_value={}):
+                port.data()
+            self.assertIsNone(captured['romfs']); self.assertIsNone(captured['romfs_at'])
+            self.assertTrue(captured['container'])
+            self.assertIn(f'DM_ROMFS_CONTAINER={t / "game.nsp"}', captured['env'])
+            self.assertIn(f'DM_PROD_KEYS={t / "prod.keys"}', captured['env'])
+        finally:
+            shutil.rmtree(t, ignore_errors=True)
+
     def test_a_leftover_half_made_pack(self):   # a port killed mid-way leaves one behind: it must not stop the next port (the log of 2026-11-09: FileNotFoundError, then exit 139)
         from unittest import mock
         t = Path(tempfile.mkdtemp(prefix='nx2a_test_pack_'))

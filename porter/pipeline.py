@@ -1479,7 +1479,7 @@ class Port:
             # The pack's env.txt says where the host reads it from, and the manifest says the same, so the app knows the pack needs that folder.
             # A game without a RomFS (an OpenGL ES one) has none to point at: the pack keeps no RomFS, as before.
             # With the RomFS compressed (android.tsv romfs zstd) it points at the packed folder in the build workspace, which is where the packer wrote it.
-            if romfs.is_dir():
+            if romfs is not None and romfs.is_dir():
                 romfs_at, romfs = str(romfs), None
             # The runtime does not go into the pack when the app gave a runtimes folder (NX2A_RUNTIMES):
             # the host and the loader's hooks go to the app's private folder instead, one folder per title
