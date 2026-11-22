@@ -1406,6 +1406,9 @@ class Port:
             upd = next((p for n, p, _ in cp if n == datapack.CONTAINER_UPDATE), None)
             key = next((p for n, p, _ in getattr(self, 'container_keys', []) or [] if n == 'prod.keys'), None)
             if not (base and key): raise BuildError('--romfs-container: the game file or prod.keys is missing')
+            if any(str(Path(p).resolve()).startswith(str(self.work.resolve()) + os.sep) for p in (base, upd) if p):
+                raise BuildError('--romfs-container on the phone reads NSP / XCI files where they are; an NSZ / XCZ is decompressed into the build folder, '
+                                 'which the game would then need: port without this option, or give the folder the NSP / XCI')
             cont_env = [f'DM_ROMFS_CONTAINER={base}', f'DM_PROD_KEYS={key}'] + ([f'DM_ROMFS_UPDATE={upd}'] if upd else [])
             if any(n.startswith('aoc/') for n, _, _ in cp): say('[RED] the DLC NSPs beside the dump are not read in place on the phone yet: the game runs without its DLC')
         elif getattr(self.ap, 'romfs_zstd', False) and romfs.is_dir():   # android.tsv romfs zstd: packed copies of the files that compress, made once into the build folder; the rest stay links to the extraction
