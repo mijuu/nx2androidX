@@ -239,8 +239,11 @@ class MainActivity : ComponentActivity() {
             if (port.running) {
                 toast(locale.str(R.string.runtime_busy))
             } else if (file.canRead()) {
-                // 落位跟着这个游戏的数据包走：它在可移动卡上，新包就建在那儿（内部存储的那份不动）
-                val packDir = library.packDirOf(file)?.absolutePath
+                // 勾了「构建到共享存储」就落在 Android/data/<pkg>/files/ports（只对直读有意义）；
+                // 否则落位跟着这个游戏的数据包走：它在可移动卡上，新包就建在那儿（内部存储的那份不动）
+                val packDir = if (cfg.container && cfg.sharedStorage) {
+                    getExternalFilesDir(null)?.let { File(it, "ports").absolutePath }
+                } else library.packDirOf(file)?.absolutePath
                 PortService.start(this, file.absolutePath, prefs.keys,
                                   cfg.touch, cfg.fps60, cfg.experimental, cfg.aliasHeadroom,
                                   cfg.sharedFont, firmwareRepo.folder ?: "", cfg.mtReplay, packDir,

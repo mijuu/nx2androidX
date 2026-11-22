@@ -341,7 +341,9 @@
     <string name="builds_60fps">60 fps</string>
     <string name="builds_experimental">Experimental port (a game that is not adapted yet)</string>
     <string name="builds_container">Read the game file in place (no unpacked copy)</string>
-    <string name="builds_container_hint">The game file stays where it is: keep it there, or the game will not start.</string>
+    <string name="builds_container_hint">No copy of the game\'s data is made: the build is faster and uses less space. The game file must stay where it is; move or delete it and the game will not start.</string>
+    <string name="builds_shared_pack">Put the pack in shared storage</string>
+    <string name="builds_shared_pack_hint">The pack goes to Android/data/com.nx.android/files/ports, where adb or a file manager can see and copy it.</string>
     <string name="builds_alias_headroom">Extra address space</string>
     <string name="builds_alias_auto">Auto</string>
     <string name="builds_alias_short">Address space %1$d GB</string>
