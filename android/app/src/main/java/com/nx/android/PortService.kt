@@ -57,6 +57,7 @@ class PortService : Service() {
         const val FIRMWARE = "firmware";
         const val MT = "mt";
         const val PACK_DIR = "packDir"
+        const val CONT = "cont"
         // The Intent's extras: the port's parameters, handed over from the UI to the service
         // Intent 的 extra：移植的参数，从界面交到服务手里
 
@@ -68,7 +69,7 @@ class PortService : Service() {
             ctx: Context, game: String, keys: String,
             touch: Boolean, fps60: Boolean, exp: Boolean, aliasHeadroom: Int,
             sharedFont: String = "", firmware: String = "", mtReplay: Boolean = false,
-            packDir: String? = null
+            packDir: String? = null, container: Boolean = false
         ) {
             val i = Intent(ctx, PortService::class.java)
                 .setAction(ACTION_START)
@@ -79,6 +80,7 @@ class PortService : Service() {
             if (firmware.isNotBlank()) i.putExtra(FIRMWARE, firmware)
             if (mtReplay) i.putExtra(MT, true)
             if (!packDir.isNullOrBlank()) i.putExtra(PACK_DIR, packDir)
+            if (container) i.putExtra(CONT, true)
             ContextCompat.startForegroundService(ctx, i)
         }
 
@@ -151,6 +153,7 @@ class PortService : Service() {
             aliasHeadroom = intent.getIntExtra(ALIAS, ALIAS_AUTO),
             sharedFont = intent.getStringExtra(FONT) ?: "",
             mtReplay = intent.getBooleanExtra(MT, false),
+            container = intent.getBooleanExtra(CONT, false),
         )
         val began = try { operations.beginBuild(game, cfg) } catch (e: Exception) {
             AppLog.line("[RED] Build history could not be saved: ${e.message}")
@@ -182,6 +185,7 @@ class PortService : Service() {
                 intent.getIntExtra(ALIAS, ALIAS_AUTO),
                 intent.getStringExtra(FONT) ?: "", intent.getStringExtra(FIRMWARE) ?: "",
                 intent.getBooleanExtra(MT, false), intent.getStringExtra(PACK_DIR),
+                intent.getBooleanExtra(CONT, false),
             ) {
                 handler.post {
                     if (runner === taskRunner) {

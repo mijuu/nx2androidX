@@ -78,6 +78,8 @@ data class GameConfig(
     val sharedFont: String = "",
     /** 多线程回放：游戏的 Vulkan 命令录到自己的线程上（热闹场景里更快；要关掉得重新移植） */
     val mtReplay: Boolean = false,
+    /** 直接读取游戏文件（NSP/XCI）本身：不再解包一份 RomFS，游戏的这些文件要留在原处 */
+    val container: Boolean = false,
 )
 
 /**
@@ -91,11 +93,11 @@ object GameConfigJson {
     fun encode(c: GameConfig): JSONObject = JSONObject()
         .put("touch", c.touch).put("fps60", c.fps60).put("exp", c.experimental)
         .put("alias", c.aliasHeadroom)
-        .put("font", c.sharedFont).put("mt", c.mtReplay)
+        .put("font", c.sharedFont).put("mt", c.mtReplay).put("cont", c.container)
 
     fun decode(o: JSONObject): GameConfig = GameConfig(
         o.optBoolean("touch"), o.optBoolean("fps60"), o.optBoolean("exp"), o.optInt("alias", ALIAS_AUTO),
-        o.optString("font", ""), o.optBoolean("mt", false))
+        o.optString("font", ""), o.optBoolean("mt", false), o.optBoolean("cont", false))
 }
 
 /** Moves filename-keyed legacy options to title IDs once the library can identify their games. */
