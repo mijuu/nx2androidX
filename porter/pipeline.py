@@ -1457,6 +1457,15 @@ class Port:
         romfs, romfs_at, zenv = self.game / 'RomFS', None, []
         cont = self.o.romfs_container
         if cont: romfs = None   # the pack lists the player's NSPs instead (containers), which the installer pushes and the host reads the files out of; the DLC tree stays out too
+        cont_env = []
+        if cont and self.o.app:   # the phone reads the player's own files where they are: the pack lists no push, env.txt names them
+            cp = getattr(self, 'container_push', []) or []
+            base = next((p for n, p, _ in cp if n.startswith('romfs')), None)
+            upd = next((p for n, p, _ in cp if n == datapack.CONTAINER_UPDATE), None)
+            key = next((p for n, p, _ in getattr(self, 'container_keys', []) or [] if n == 'prod.keys'), None)
+            if not (base and key): raise BuildError('--romfs-container: the game file or prod.keys is missing')
+            cont_env = [f'DM_ROMFS_CONTAINER={base}', f'DM_PROD_KEYS={key}'] + ([f'DM_ROMFS_UPDATE={upd}'] if upd else [])
+            if any(n.startswith('aoc/') for n, _, _ in cp): say('[RED] the DLC NSPs beside the dump are not read in place on the phone yet: the game runs without its DLC')
         elif getattr(self.ap, 'romfs_zstd', False) and romfs.is_dir():   # android.tsv romfs zstd: packed copies of the files that compress, made once into the build folder; the rest stay links to the extraction
             PROG.set(step='compressing the RomFS', done=0, total=1, unit='B')
             nf, npk, raw, out = romfs_pack.pack_tree(romfs, self.aw / 'romfs_zstd' / self.pkg_ver, self.o.jobs, progress=lambda d, t: PROG.set(step='compressing the RomFS', done=d, total=t, unit='B'))
@@ -1513,9 +1522,10 @@ class Port:
             for d in self.drivers(): files[f'drivers/{d.name}'] = d
             if self.drivers(): drivers = sorted({f'drivers/{d.name}' for d in self.drivers()})
         man = datapack.build(dst, profile=self.ap, version=self.pkg_ver, display=self.display, patched=self.patched, romfs=romfs, romfs_at=romfs_at, shaders=self.dmsv,
-                             aoc=None if cont else self.aoc, containers=getattr(self, 'container_push', None) if cont else None,
-                             keys=getattr(self, 'container_keys', None) if cont else None, sysdata=self.sysdata, language=self.lang, package=self.package,
-                             env=self.fps_env + font_env + zenv + (['DM_VK_MT_REPLAY=1'] if self.o.mt_replay else [])
+                             aoc=None if cont else self.aoc, containers=getattr(self, 'container_push', None) if cont and not self.o.app else None,
+                             keys=getattr(self, 'container_keys', None) if cont and not self.o.app else None, container=cont,
+                             sysdata=self.sysdata, language=self.lang, package=self.package,
+                             env=self.fps_env + font_env + zenv + cont_env + (['DM_VK_MT_REPLAY=1'] if self.o.mt_replay else [])
                              + (['DM_MENU_BUTTON=0'] if self.o.no_menu_button else [])
                              + ([f'DM_VK_DRIVER={driver_lib_name(self.o.vulkan_driver)}'] if self.o.vulkan_driver else []), settings=TOUCH_SETTINGS if self.o.touch else None,
                              files=files, text=self.lists(), host=host, icon=icon, drivers=drivers, profile_h=getattr(self, 'profile_h', None),

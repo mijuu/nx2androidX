@@ -81,7 +81,7 @@ def romfs_sizes(d):   # {path in the RomFS: size} of the pack in d, '/'-separate
     return {p.relative_to(r).as_posix(): p.stat().st_size for p in r.rglob('*') if p.is_file()} if r.is_dir() else {}
 
 
-def build(dst, *, profile, version, display, patched, romfs, shaders, aoc=None, containers=None, keys=None, sysdata=None, language='en-US', package=None, env=(), settings=None, files=None, text=None,
+def build(dst, *, profile, version, display, patched, romfs, shaders, aoc=None, containers=None, keys=None, container=False, sysdata=None, language='en-US', package=None, env=(), settings=None, files=None, text=None,
           host=None, icon=None, drivers=None, profile_h=None, no_lsfg=None, pack_base=None, romfs_at=None, progress=None):
     """Write the pack to dst (replacing it). profile: the AndroidProfile; package: the app's, when not the profile's; env: more env.txt rows, after the profile's; settings: settings.txt values over the profile's;
     files: {name in the pack: source} (the 60 fps memory writes, fpslock.tsv; the button-icon font; subfolders for the app's mode: host/, drivers/, overlay/, icon.png);
@@ -91,8 +91,8 @@ def build(dst, *, profile, version, display, patched, romfs, shaders, aoc=None, 
     and the manifest says the same, so the app knows the pack needs that folder.
     containers: the player's own game files instead of a RomFS / DLC tree, [(path under files/container/, source on this PC, bytes)] (romfs.nsp, update.nsp, aoc/<index>.nsp), which
     the installer pushes to the device as they are and the host reads the game's files out of (the manifest's push; no copy in the pack). keys: [(name in the files folder, source, bytes)]
-    for DM_PROD_KEYS, likewise pushed, not packed: they are the player's.
-    Returns the manifest"""
+    for DM_PROD_KEYS, likewise pushed, not packed: they are the player's. container: the pack reads the game out of the player's own files without
+    a push list (the phone's app mode: env.txt names the files where they are). Returns the manifest"""
     package = package or profile.package
     if romfs_at: romfs = None   # the RomFS is read from that folder, not from the pack
     tmp = dst.with_name(dst.name + '.partial')
@@ -156,7 +156,7 @@ def build(dst, *, profile, version, display, patched, romfs, shaders, aoc=None, 
                files=n, bytes=b, dlc=dlc,
                sysdata=sorted(p.name for p in sysdata.iterdir() if p.is_dir()) if sysdata else [], made=time.strftime('%Y-%m-%d %H:%M:%S'))
     if push: man['push'] = push   # the installer pushes these to the device (files/container/..., files/...), from the game folder or from beside the pack
-    if containers: man['container'] = True   # the game's files are read out of the NSPs: the installer compares no RomFS folder and removes no RomFS tree's files one by one
+    if containers or container: man['container'] = True   # the game's files are read out of the player's own files: the installer compares no RomFS folder and removes no RomFS tree's files one by one
     if host: man['host'] = host         # the app's mode: the game's host (libdmplay.so) in the pack, the app copies it into its private folder to run the game
     if icon: man['icon'] = icon
     if drivers: man['drivers'] = list(drivers)
