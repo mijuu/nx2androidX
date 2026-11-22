@@ -385,7 +385,11 @@ private fun GameDetailScreen(lib: LibraryState, port: PortState,
             exportProgress = null
             actions.onToast(
                 if (r.ok) locale.str(R.string.lib_pack_export_done, r.folder)
-                else locale.str(R.string.lib_pack_export_failed, r.failure ?: "")
+                else locale.str(R.string.lib_pack_export_failed, when (r.failure) {
+                    "container" -> locale.str(R.string.lib_pack_export_container)
+                    "no_romfs" -> locale.str(R.string.lib_pack_export_no_romfs)
+                    else -> r.failure ?: ""
+                })
             )
         }
     }
