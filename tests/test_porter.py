@@ -769,6 +769,7 @@ class Misc(unittest.TestCase):
             (d / 'g.nsp').write_bytes(b'\0' * 2**20)
             work = d / 'build'
             card = d / 'card/ports'
+            card.mkdir(parents=True)   # a mounted card's ports folder is there; the check asks that volume
             p = self.space_port(d, {'base': d / 'g.nsp', 'updates': [], 'dlc': []}, work, pack_dir=card)
             real = shutil.disk_usage
             try:
