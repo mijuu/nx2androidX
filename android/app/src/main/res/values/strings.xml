@@ -493,6 +493,9 @@
     <string name="lib_remove_item_partial">Half-made data pack</string>
     <string name="lib_remove_item_runtime">The game\'s runtime in the app\'s folder</string>
     <string name="lib_pin_shortcut">Send to home screen</string>
+    <string name="lib_relink_action">Relink the game file</string>
+    <string name="lib_relink_done">Relinked to the game file</string>
+    <string name="lib_relink_failed">Relink failed (exit code %1$d)</string>
     <string name="shortcut_added">Sent to the home screen.</string>
     <string name="shortcut_unsupported">This device\'s home screen does not support adding shortcuts.</string>
     <string name="shortcut_disabled">This game is not in the library any more.</string>

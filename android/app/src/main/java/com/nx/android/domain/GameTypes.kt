@@ -148,6 +148,7 @@ data class Ported(
     val noLsfg: Boolean? = null, // 清单里的 no_lsfg（构建指纹的一部分；老的数据包没有这一项）
     val profileH: String = "", // 清单里的 profile_h（这个包的运行库按哪份档案编的）：与目录侧标记比对
     val marker: RuntimeBuildMarker? = null, // 统一目录侧的构建标记（新格式才有；启动判断只读目录侧）
+    val container: Boolean = false, // 清单里的 container：游戏的文件不放进包里，运行时按 env.txt 的绝对路径读玩家自己的 NSP/XCI（可「重新关联」到新位置）
 ) {
     /** The pack has its runtime (a legacy pack's host file in place; a new-format one its folder marker): it is a port, not a leftover manifest. */
     val hasHost: Boolean get() = if (hostDeclared) host.isFile else marker != null

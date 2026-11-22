@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SdCard
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.outlined.VideogameAsset
@@ -496,6 +497,20 @@ private fun GameDetailScreen(lib: LibraryState, port: PortState,
                                     else shareGameLog(p)
                                 },
                             )
+                            // 直接读取的包：游戏文件被挪走或改了名，选一次它现在的位置就能救回来（porter 只改 env.txt，不重建）
+                            if (ported?.container == true) {
+                                DropdownMenuItem(
+                                    text = { Text(locale.str(R.string.lib_relink_action)) },
+                                    leadingIcon = { Icon(Icons.Filled.Sync, null, Modifier.size(18.dp)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        val p = ported
+                                        onRequest(PickerRequest(PickerMode.FILE, GAME_FILE_EXTENSIONS, File("/storage"),
+                                            locale.str(R.string.builds_choose_game_file),
+                                            onPicked = { f -> actions.onRelinkPack(p.pack, f) }))
+                                    },
+                                )
+                            }
                             // 发送到桌面：桌面快捷方式（pin shortcut），点击与库页卡片走同一扇门（已完成的游戏才有）
                             DropdownMenuItem(
                                 text = { Text(locale.str(R.string.lib_pin_shortcut)) },

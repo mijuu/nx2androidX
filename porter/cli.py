@@ -122,6 +122,11 @@ def _parser():
     hs.add_argument('--package', default='', help='the app (default: the only ported game installed)')
     hs.add_argument('--device', default='', help='adb serial (default: the configured device, else the only one)')
     hs.add_argument('--jobs', type=int, default=os.cpu_count() or 8); hs.add_argument('--json', action='store_true')
+    rl = sub.add_parser('relink', help="point an in-place pack (--romfs-container) at the game's files where they are now: only env.txt changes (and the pack's own aoc/ copies), nothing is built again")
+    rl.add_argument('pack', help='the data pack (<App>-data)')
+    rl.add_argument('game', help='the game file (NSP / XCI) in its new place: the update and the DLC beside it are taken')
+    rl.add_argument('-k', '--keys', help='prod.keys (default: the configured one)')
+    rl.add_argument('--json', action='store_true')
     return ap
 
 
@@ -324,6 +329,18 @@ def cmd_saves(a):
     return 0
 
 
+def cmd_relink(a):
+    from porter import pipeline
+    from porter.upstream import BuildError
+    try: out = pipeline.relink(a.pack, a.game, a.keys)
+    except BuildError as e:
+        if a.json: _print_json({'error': str(e)})
+        else: print(e, file=sys.stderr)
+        return 1
+    if a.json: _print_json(out)
+    return 0
+
+
 def cmd_driver(a):   # porter driver and porter host: the installed APK rebuilt without the game files
     import contextlib
     from porter import config, driver, host, paths, saves, toolchain
@@ -348,4 +365,4 @@ def cmd_driver(a):   # porter driver and porter host: the installed APK rebuilt 
 def main(argv):
     if hasattr(sys.stdout, 'reconfigure'): sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # game names and progress bars on a Windows console
     a = _parser().parse_args(argv)
-    return {'doctor': cmd_doctor, 'profiles': cmd_profiles, 'inspect': cmd_inspect, 'port': cmd_port, 'rebuild-runtime': cmd_rebuild_runtime, 'install': cmd_install, 'devices': cmd_devices, 'tools': cmd_tools, 'config': cmd_config, 'saves': cmd_saves, 'driver': cmd_driver, 'host': cmd_driver}[a.cmd](a)
+    return {'doctor': cmd_doctor, 'profiles': cmd_profiles, 'inspect': cmd_inspect, 'port': cmd_port, 'rebuild-runtime': cmd_rebuild_runtime, 'install': cmd_install, 'devices': cmd_devices, 'tools': cmd_tools, 'config': cmd_config, 'saves': cmd_saves, 'driver': cmd_driver, 'host': cmd_driver, 'relink': cmd_relink}[a.cmd](a)

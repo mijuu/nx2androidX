@@ -180,6 +180,8 @@ data class AppActions(
     val onRunRebuild: (pack: File, name: String) -> Unit = { _, _ -> },
     // 桌面快捷方式：管理下拉里的「发送到桌面」（只对已完成的游戏出现）
     val onSendToDesktop: (GameEntry) -> Unit = { },
+    // 直接读取的包：把游戏文件重新关联到它现在的位置（只改 env.txt，不重建）
+    val onRelinkPack: (pack: File, game: File) -> Unit = { _, _ -> },
     val onToast: (String) -> Unit,
     val version: () -> String,
     val keys: () -> String,
