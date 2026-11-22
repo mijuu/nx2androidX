@@ -335,7 +335,9 @@
     <string name="builds_60fps">60 帧</string>
     <string name="builds_experimental">实验性移植（还没适配的游戏）</string>
     <string name="builds_container">直接读取游戏文件（不再解包）</string>
-    <string name="builds_container_hint">游戏文件留在原处：移植后不要移动或删除它，否则游戏无法启动。</string>
+    <string name="builds_container_hint">勾选后不再复制游戏数据，构建更快、占用更小；游戏文件要留在原处，移动或删除后游戏无法启动。</string>
+    <string name="builds_shared_pack">数据包放到共享存储</string>
+    <string name="builds_shared_pack_hint">数据包放在 Android/data/com.nx.android/files/ports，接数据线或用文件管理器就能看到、拷出来。</string>
     <string name="builds_alias_headroom">额外地址空间</string>
     <string name="builds_alias_auto">自动</string>
     <string name="builds_alias_short">地址空间 %1$d GB</string>

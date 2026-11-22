@@ -80,6 +80,11 @@ data class GameConfig(
     val mtReplay: Boolean = false,
     /** 直接读取游戏文件（NSP/XCI）本身：不再解包一份 RomFS，游戏的这些文件要留在原处 */
     val container: Boolean = false,
+    /**
+     * 数据包建到共享存储（Android/data/<pkg>/files/ports）：数据线和文件管理器能直接看到，方便调试。
+     * 配合直读：那样的包里只有几十个大文件，共享存储的 FUSE 慢不了多少。
+     */
+    val sharedStorage: Boolean = false,
 )
 
 /**
@@ -93,11 +98,12 @@ object GameConfigJson {
     fun encode(c: GameConfig): JSONObject = JSONObject()
         .put("touch", c.touch).put("fps60", c.fps60).put("exp", c.experimental)
         .put("alias", c.aliasHeadroom)
-        .put("font", c.sharedFont).put("mt", c.mtReplay).put("cont", c.container)
+        .put("font", c.sharedFont).put("mt", c.mtReplay).put("cont", c.container).put("shared", c.sharedStorage)
 
     fun decode(o: JSONObject): GameConfig = GameConfig(
         o.optBoolean("touch"), o.optBoolean("fps60"), o.optBoolean("exp"), o.optInt("alias", ALIAS_AUTO),
-        o.optString("font", ""), o.optBoolean("mt", false), o.optBoolean("cont", false))
+        o.optString("font", ""), o.optBoolean("mt", false), o.optBoolean("cont", false),
+        o.optBoolean("shared", false))
 }
 
 /** Moves filename-keyed legacy options to title IDs once the library can identify their games. */

@@ -54,6 +54,15 @@ class GameLibraryRepositoryImpl @Inject constructor(
                 byTitleInternal[titleId] = chosen.second
             }
         }
+        // 共享存储上「构建到共享存储」建的包：同样是手机自己的存储（FUSE），可移动卡之后再看
+        paths.sharedPorts?.let { dir ->
+            for ((titleId, candidate) in LibraryFileScanner.outIndex(dir, paths.runtimes)) {
+                val chosen = LibraryLogic.preferPack(byTitle[titleId], byTitleInternal[titleId] == true,
+                    candidate, candidateInternal = true)
+                byTitle[titleId] = chosen.first
+                byTitleInternal[titleId] = chosen.second
+            }
+        }
         for ((titleId, candidate) in LibraryFileScanner.outIndex(paths.ports, paths.runtimes)) {
             val chosen = LibraryLogic.preferPack(byTitle[titleId], byTitleInternal[titleId] == true,
                 candidate, candidateInternal = true)
@@ -81,7 +90,8 @@ class GameLibraryRepositoryImpl @Inject constructor(
         else GameEntry(record.titleId, null, null, null, record)
     }
 
-    override fun portsDirs(): List<File> = listOf(paths.ports) + StorageVolumes.removablePortsDirs(context).map { it.second }
+    override fun portsDirs(): List<File> =
+        listOfNotNull(paths.ports, paths.sharedPorts) + StorageVolumes.removablePortsDirs(context).map { it.second }
 
     /**
      * 库里每个游戏的占用来源：工作区与它的数据包。
