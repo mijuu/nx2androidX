@@ -551,7 +551,9 @@ class Port:
             # the pack goes to another volume (the removable card): the build's files stay here, the pack's copy goes there
             need, free = max(0, game + temp - built) + margin, shutil.disk_usage(where).free
             if free < need: raise BuildError(f'not enough disk space on {where.anchor} for the build folder: the port needs about {need / 2**30:.1f} GB more, {free / 2**30:.1f} GB is free')
-            need, free = (dlc if self.o.app else game) + margin, shutil.disk_usage(pack).free
+            probe = pack   # the pack's folder may not be there yet: ask the nearest one that is
+            while not probe.exists() and probe.parent != probe: probe = probe.parent
+            need, free = (dlc if self.o.app else game) + margin, shutil.disk_usage(probe).free
             if free < need: raise BuildError(f'not enough disk space for the data pack in {pack}: the port needs about {need / 2**30:.1f} GB more, {free / 2**30:.1f} GB is free')
             return
         need, free = max(0, copies * game + temp - built) + margin, shutil.disk_usage(where).free
