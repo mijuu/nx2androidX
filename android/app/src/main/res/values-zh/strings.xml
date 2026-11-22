@@ -334,6 +334,10 @@
     <string name="builds_touch_game">触屏游戏（隐藏手柄）</string>
     <string name="builds_60fps">60 帧</string>
     <string name="builds_experimental">实验性移植（还没适配的游戏）</string>
+    <string name="builds_container">直接读取游戏文件（不再解包）</string>
+    <string name="builds_container_hint">勾选后不再复制游戏数据，构建更快、占用更小；游戏文件要留在原处，移动或删除后游戏无法启动。</string>
+    <string name="builds_shared_pack">数据包放到共享存储</string>
+    <string name="builds_shared_pack_hint">数据包放在 Android/data/com.nx.android/files/ports，接数据线或用文件管理器就能看到、拷出来。</string>
     <string name="builds_alias_headroom">额外地址空间</string>
     <string name="builds_alias_auto">自动</string>
     <string name="builds_alias_short">地址空间 %1$d GB</string>
@@ -388,6 +392,7 @@
     <string name="builds_config_of">配置：%1$s</string>
     <string name="builds_touch">触屏</string>
     <string name="builds_experimental_short">实验性</string>
+    <string name="builds_container_short">直读</string>
     <string name="builds_default_options">默认参数</string>
     <string name="builds_port_action">移植</string>
     <string name="builds_minutes_seconds">%1$s 分 %2$s 秒</string>
@@ -480,6 +485,9 @@
     <string name="lib_remove_item_partial">半成品数据包</string>
     <string name="lib_remove_item_runtime">App 私有目录里的运行库</string>
     <string name="lib_pin_shortcut">发送到桌面</string>
+    <string name="lib_relink_action">重新关联游戏文件</string>
+    <string name="lib_relink_done">已关联到新的游戏文件</string>
+    <string name="lib_relink_failed">重新关联失败（退出码 %1$d）</string>
     <string name="shortcut_added">已发送到桌面。</string>
     <string name="shortcut_unsupported">这个设备的桌面不支持添加快捷方式。</string>
     <string name="shortcut_disabled">这个游戏已不在游戏库里。</string>
@@ -529,6 +537,8 @@
     <string name="lib_pack_export_progress">已导出 %1$s / %2$s</string>
     <string name="lib_pack_export_done">导出到 %1$s</string>
     <string name="lib_pack_export_failed">导出没有完成：%1$s</string>
+    <string name="lib_pack_export_container">这个数据包直接读取原处的游戏文件，不能打包带走</string>
+    <string name="lib_pack_export_no_romfs">这个数据包旁边没有游戏文件</string>
     <string name="lib_forget_action">把它移出游戏库</string>
     <string name="lib_forget_confirm_title">把它移出游戏库？</string>
     <string name="lib_forget_what">这个游戏从库里消失。那个文件夹不会被动：文件原样留在原地。</string>

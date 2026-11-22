@@ -31,14 +31,23 @@ class PortRunner(
         touch: Boolean, fps60: Boolean, experimental: Boolean,
         aliasHeadroom: Int,
         sharedFont: String = "", firmware: String = "", mtReplay: Boolean = false,
-        packDir: String? = null,
+        packDir: String? = null, container: Boolean = false,
         onEnd: () -> Unit,
     ): Thread {
         val args = portArgs(gameFile, keys, touch, fps60, experimental, aliasHeadroom, !BuildConfig.NX_LSFG,
-            sharedFont, firmware, mtReplay, deviceLanguage())
+            sharedFont, firmware, mtReplay, deviceLanguage(), container)
         // A file in a netdisk's folder is not there yet in its middle: the port would read it as a broken dump
         GameSource.cloudFolder(gameFile)?.let { onLine(locale.str(R.string.runner_cloud_folder, it)) }
         return start(args, onEnd, if (packDir.isNullOrBlank()) emptyMap() else mapOf("NX2A_PACK_DIR" to packDir))
+    }
+
+    /**
+     * Points a direct-read pack at the game's files where they are now: only the pack's env.txt changes (the porter's
+     * relink) — the shaders and the rewritten code are the same game, not built again.
+     */
+    fun relink(pack: String, gameFile: String, keys: String, onExit: (Int) -> Unit): Thread {
+        val args = mutableListOf("-m", "porter", "relink", pack, gameFile, "-k", keys)
+        return start(args, {}, onExit = onExit)
     }
 
     /**
@@ -64,7 +73,7 @@ class PortRunner(
         fun portArgs(gameFile: String, keys: String, touch: Boolean, fps60: Boolean,
                      experimental: Boolean, aliasHeadroom: Int, noLsfg: Boolean,
                      sharedFont: String = "", firmware: String = "", mtReplay: Boolean = false,
-                     deviceLanguage: String = ""): List<String> {
+                     deviceLanguage: String = "", container: Boolean = false): List<String> {
             val args = mutableListOf("-m", "porter", "port", gameFile, "-k", keys, "--progress", "json", "--app")
             if (touch) args += "--touch"
             if (fps60) args += "--fps60"
@@ -73,6 +82,7 @@ class PortRunner(
             if (sharedFont.isNotBlank()) args += listOf("--shared-font", sharedFont.trim())
             if (firmware.isNotBlank()) args += listOf("--firmware", firmware.trim())
             if (mtReplay) args += "--mt-replay"
+            if (container) args += "--romfs-container"
             if (deviceLanguage.isNotBlank()) args += listOf("--language-preferred", deviceLanguage.trim())
             // A build without the frame generation (the Gradle property nxLsfg=false): the host the app builds on the
             // device is then smaller and the frame generation reports that it is not in this build (android/NOTICE.md).

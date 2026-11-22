@@ -335,6 +335,10 @@
     <string name="builds_touch_game">Touch game (the gamepad starts hidden)</string>
     <string name="builds_60fps">60 fps</string>
     <string name="builds_experimental">Experimental port (a game that is not adapted yet)</string>
+    <string name="builds_container">Read the game file in place (no unpacked copy)</string>
+    <string name="builds_container_hint">No copy of the game\'s data is made: the build is faster and uses less space. The game file must stay where it is; move or delete it and the game will not start.</string>
+    <string name="builds_shared_pack">Put the pack in shared storage</string>
+    <string name="builds_shared_pack_hint">The pack goes to Android/data/com.nx.android/files/ports, where adb or a file manager can see and copy it.</string>
     <string name="builds_alias_headroom">Extra address space</string>
     <string name="builds_alias_auto">Auto</string>
     <string name="builds_alias_short">Address space %1$d GB</string>
@@ -389,6 +393,7 @@
     <string name="builds_config_of">Configuration: %1$s</string>
     <string name="builds_touch">Touch</string>
     <string name="builds_experimental_short">Experimental</string>
+    <string name="builds_container_short">In place</string>
     <string name="builds_default_options">The default options</string>
     <string name="builds_port_action">Port</string>
     <string name="builds_minutes_seconds">%1$s min %2$s s</string>
@@ -481,6 +486,9 @@
     <string name="lib_remove_item_partial">Half-made data pack</string>
     <string name="lib_remove_item_runtime">The game\'s runtime in the app\'s folder</string>
     <string name="lib_pin_shortcut">Send to home screen</string>
+    <string name="lib_relink_action">Relink the game file</string>
+    <string name="lib_relink_done">Relinked to the game file</string>
+    <string name="lib_relink_failed">Relink failed (exit code %1$d)</string>
     <string name="shortcut_added">Sent to the home screen.</string>
     <string name="shortcut_unsupported">This device\'s home screen does not support adding shortcuts.</string>
     <string name="shortcut_disabled">This game is not in the library any more.</string>
@@ -530,6 +538,8 @@
     <string name="lib_pack_export_progress">Exported %1$s of %2$s</string>
     <string name="lib_pack_export_done">Exported to %1$s</string>
     <string name="lib_pack_export_failed">The export did not finish: %1$s</string>
+    <string name="lib_pack_export_container">this pack reads the game file where it is, so it cannot travel as a folder</string>
+    <string name="lib_pack_export_no_romfs">the game\'s files are not with this pack</string>
     <string name="lib_forget_action">Take it out of the library</string>
     <string name="lib_forget_confirm_title">Take it out of the library?</string>
     <string name="lib_forget_what">This game leaves the library. Its folder is not touched: the files stay exactly where they are.</string>
