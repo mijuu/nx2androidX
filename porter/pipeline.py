@@ -523,7 +523,7 @@ class Port:
         try:
             try:
                 self.inputs()
-                PROG.plan(1 + len(self.versions) + bool(self.fam['dlc']) + bool(o.firmware and self.ap.sysdata) + bool(o.fps60) + 6 + bool(o.install))   # nx_extract, the versions, the DLC, the system data, 60 fps, rewrite / split / Vulkan shaders / host / APK / data, install (unpack adds its own)
+                PROG.plan(1 + len(self.versions) + bool(self.fam['dlc']) + bool(o.firmware and self.ap.sysdata) + bool(o.fps60) + (5 if o.app else 6) + bool(o.install))   # nx_extract, the versions, the DLC, the system data, 60 fps, rewrite / split / Vulkan shaders / host / data (the app's mode makes no APK), install (unpack adds its own)
                 self.extract()
             finally: self.drop_unpacked()   # a failed run leaves no decompressed dumps behind either
             self.check_graphics()
@@ -1313,7 +1313,9 @@ class Port:
             src = Path(pre)
             if not (src / 'dmsh_xlate.dll').is_file(): raise BuildError(f'NX2A_DMSH_XLATE has no dmsh_xlate.dll: {src}')
             out = paths.user_dir() / 'tools/dmsh_xlate'; nsp.rmtree(out); shutil.copytree(src, out)
-            key = nsp.fingerprint(('stat', out), ('cmd', ['dmsh_xlate', 'prebuilt']), env=self.env)
+            # The bytes, not their times: installing a new APK re-extracts the shipped translator with fresh mtimes,
+            # and a stat key would then translate every shader again (FINAL FANTASY RESONANCE: 73,512 shaders).
+            key = nsp.fingerprint(product_cache.inventory(out), ('cmd', ['dmsh_xlate', 'prebuilt']), env=self.env)
             return out / 'dmsh_xlate.dll', key
         return build_translator(self.tools['dotnet'], self.env, self.logs)
 
@@ -1552,7 +1554,7 @@ class Port:
                              files=files, text=self.lists(), host=host, icon=icon, drivers=drivers, profile_h=getattr(self, 'profile_h', None),
                              no_lsfg=self.o.no_lsfg,
                              pack_base=str(dst) if self.o.app else None,   # the app's mode: the pack lives in the app's own folder, not in the app's files folder
-                             progress=lambda what: PROG.set(step=f'linking {what}'))
+                             progress=lambda what, done, total: PROG.set(step=f'linking {what}', done=done, total=total, unit='B'))
         self.data_path = dst; self.result['data'] = str(dst)
         PROG.end(f'{man["files"]:,} files, {man["bytes"] / 2**30:.1f} GB')
 

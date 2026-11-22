@@ -12,6 +12,7 @@ import com.nx.android.data.PrefsStore.Companion.PORT_STARTED_AT
 import com.nx.android.domain.PortEvents
 import com.nx.android.domain.porting.PortPhase
 import com.nx.android.domain.porting.PortPhaseTransitions
+import com.nx.android.domain.porting.PortProgress
 import com.nx.android.domain.GameConfig
 import com.nx.android.domain.porting.BuildSession
 import com.nx.android.data.porting.BuildSessionRepository
@@ -59,6 +60,9 @@ class PortState @Inject constructor(
     var history by mutableStateOf(listOf<Record>()); private set
     var buildId by mutableStateOf(""); private set
 
+    /** 当前阶段自己的比例（移植器的 frac 只描述这个阶段），每换一个阶段归零 */
+    private var stageFrac = 0f
+
     val running: Boolean get() = phase == PortPhase.RUNNING
 
     /** The port's artifact (the pack in the app's mode, the APK on the PC flow); '' while it runs */
@@ -79,6 +83,7 @@ class PortState @Inject constructor(
         buildId = session.id
         gameFile = game
         stageOf = 0; stages = 0; stageName = ""; stageStep = ""; stageNote = ""
+        stageFrac = 0f
         progress = 0f
         apkPath = ""
         dataPath = ""
@@ -99,11 +104,22 @@ class PortState @Inject constructor(
             "stage" -> {
                 stageOf = ev.stage; stages = ev.stages
                 stageName = ev.name; stageStep = ""; stageNote = ""
+                stageFrac = 0f
+                progress = PortProgress.overall(stageOf, stages, 0f)
                 sessions.update(buildId) { it.copy(stage = stageName) }
                 say(locale.str(R.string.port_log_stage, ev.stage, ev.stages, ev.name))
             }
+            // 阶段结束也是进度：没有计数的阶段（翻译、打包）靠它推进一格
+            "stage_end" -> {
+                stageFrac = 1f
+                progress = PortProgress.overall(stageOf, stages, 1f)
+            }
             "progress" -> {
-                if (ev.frac >= 0) progress = ev.frac
+                if (ev.frac >= 0) {
+                    // 阶段内不倒退：一个计数步骤结束时移植器会把比例归零、从下一步重新数，条不该往回跳
+                    stageFrac = maxOf(stageFrac, ev.frac)
+                    progress = PortProgress.overall(stageOf, stages, stageFrac)
+                }
                 if (ev.name.isNotEmpty()) stageName = ev.name
                 if (ev.step.isNotEmpty() && ev.step != stageStep) {
                     stageStep = ev.step

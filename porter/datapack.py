@@ -28,19 +28,34 @@ CONTAINER_BASE = 'romfs.nsp'      # romfs_open_view (dm/host/hle_fs.c mount_rom_
 CONTAINER_UPDATE = 'update.nsp'   # a BKTR update layered over the base RomFS, or a full one in its place
 
 
-def link_or_copy(src, dst):
+def link_or_copy(src, dst, progress=None):
+    """A link where the filesystem allows it, else a copy; progress: called with the bytes written so far (the 1.2 GB
+    shader bundle is one file, and a copy on the shared storage runs for a while with nothing else to report)."""
     dst.parent.mkdir(parents=True, exist_ok=True)
-    try: os.link(src, dst)
-    except OSError: shutil.copy2(src, dst)
+    try:
+        os.link(src, dst)
+        if progress: progress(src.stat().st_size)
+    except OSError:
+        if progress is None:
+            shutil.copy2(src, dst); return
+        n = 0
+        with src.open('rb') as fi, dst.open('wb') as fo:
+            while chunk := fi.read(8 << 20):
+                fo.write(chunk); n += len(chunk); progress(n)
+        shutil.copystat(src, dst)
 
 
-def link_tree(src, dst):   # (files, bytes)
+def link_tree(src, dst, progress=None):   # (files, bytes)
     n = b = 0
     for root, _, files in os.walk(src):
         for f in files:
             s = Path(root) / f
-            link_or_copy(s, dst / s.relative_to(src)); n += 1; b += s.stat().st_size
+            link_or_copy(s, dst / s.relative_to(src), progress); n += 1; b += s.stat().st_size
     return n, b
+
+
+def tree_files(src):   # every file under a tree: the pack asks for their sizes before the copy, to report its own progress
+    return (Path(root) / f for root, _, files in os.walk(src) for f in files)
 
 
 def files_folder(package): return f'/sdcard/Android/data/{package}/files'
@@ -84,16 +99,33 @@ def build(dst, *, profile, version, display, patched, romfs, shaders, aoc=None, 
     shutil.rmtree(tmp, ignore_errors=True)   # the half-made pack of a killed port: it may be gone already, and one that vanishes while it is removed must not stop the port
     tmp.mkdir(parents=True)
     n = b = 0
-    for what, src, sub in (('the rewritten modules', patched, 'mods'), ('the RomFS', romfs, ROMFS), ('the DLC', aoc, 'aoc'), ('the system data', sysdata, 'sysdata')):
+    trees = (('the rewritten modules', patched, 'mods'), ('the RomFS', romfs, ROMFS), ('the DLC', aoc, 'aoc'), ('the system data', sysdata, 'sysdata'))
+    # The pack's own count: progress(what, bytes_done, bytes_total), so the bar moves while the bytes are written.
+    total = sum(p.stat().st_size for _, src, _ in trees if src for p in tree_files(src))
+    total += shaders.stat().st_size if shaders else 0
+    total += sum(Path(src).stat().st_size for src in (files or {}).values())
+    total += sum(len(body.encode('utf-8')) for body in (text or {}).values())
+    written = 0
+
+    def tick(k, what):
+        nonlocal written
+        written += k
+        if progress: progress(what, written, total)
+
+    for what, src, sub in trees:
         if not src: continue
-        if progress: progress(what)
-        dn, db = link_tree(src, tmp / sub); n += dn; b += db
-    if shaders: link_or_copy(shaders, tmp / 'shaders.dmsv'); n += 1; b += shaders.stat().st_size   # none for an OpenGL ES game
+        if progress: progress(what, written, total)
+        dn, db = link_tree(src, tmp / sub, progress=lambda k, w=what: tick(k, w)); n += dn; b += db
+    if shaders:
+        if progress: progress('the shaders', written, total)
+        link_or_copy(shaders, tmp / 'shaders.dmsv', progress=lambda k: tick(k, 'the shaders')); n += 1; b += shaders.stat().st_size   # none for an OpenGL ES game
     for name, src in (files or {}).items():
         f = tmp / name
         f.parent.mkdir(parents=True, exist_ok=True)   # the app's files live in subfolders (host/, drivers/, overlay/)
-        shutil.copyfile(src, f); n += 1; b += Path(src).stat().st_size
-    for name, body in (text or {}).items(): (tmp / name).write_text(body, encoding='utf-8', newline='\n'); n += 1; b += len(body.encode('utf-8'))
+        shutil.copyfile(src, f); n += 1; b += Path(src).stat().st_size; tick(Path(src).stat().st_size, 'the runtime files')
+    for name, body in (text or {}).items():
+        (tmp / name).write_text(body, encoding='utf-8', newline='\n'); n += 1
+        b += len(body.encode('utf-8')); tick(len(body.encode('utf-8')), 'the lists')
     base = pack_base or str(dst)   # where the pack lives on the device: its own folder (the app's mode); the PC tool's install puts it in the app's files folder
     rows = [f'# Written by nx2android\'s porter for {profile.name} ({profile.id}); KEY=VALUE per line, read by the app at launch',
             f'DM_LANG={language}']

@@ -200,6 +200,23 @@ class DataPack(unittest.TestCase):
         finally:
             shutil.rmtree(t, ignore_errors=True)
 
+    def test_the_pack_reports_the_bytes_it_writes(self):   # the app's bar during the data pack: (what, done, total) over the pack's own bytes
+        t = Path(tempfile.mkdtemp(prefix='nx2a_test_pack_'))
+        try:
+            (t / 'patched').mkdir(); (t / 'patched/main.patched.bin').write_bytes(b'x' * 10)
+            (t / 'romfs').mkdir(); (t / 'romfs/a.bin').write_bytes(b'y' * 20)
+            (t / 'shaders.dmsv').write_bytes(b'DMSV')
+            seen = []
+            man = datapack.build(t / 'out-data', profile=profiles.load(NEO), version='v196608', display='1.03',
+                                 patched=t / 'patched', romfs=t / 'romfs', shaders=t / 'shaders.dmsv',
+                                 progress=lambda what, done, total: seen.append((what, done, total)))
+            self.assertTrue(all(total == man['bytes'] for _, _, total in seen))   # one total for the whole pack
+            self.assertEqual([d for _, d, _ in seen], sorted(d for _, d, _ in seen))   # never backwards
+            self.assertEqual(seen[-1][1], man['bytes'])   # the last report is the whole pack
+            self.assertLess(seen[0][1], man['bytes'])     # it starts before the bytes are all there
+        finally:
+            shutil.rmtree(t, ignore_errors=True)
+
     def test_the_manifest_records_player_api_revision(self):
         t = Path(tempfile.mkdtemp(prefix='nx2a_test_pack_'))
         try:
