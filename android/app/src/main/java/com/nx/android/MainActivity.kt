@@ -243,7 +243,8 @@ class MainActivity : ComponentActivity() {
                 val packDir = library.packDirOf(file)?.absolutePath
                 PortService.start(this, file.absolutePath, prefs.keys,
                                   cfg.touch, cfg.fps60, cfg.experimental, cfg.aliasHeadroom,
-                                  cfg.sharedFont, firmwareRepo.folder ?: "", cfg.mtReplay, packDir, cfg.lowMem)
+                                  cfg.sharedFont, firmwareRepo.folder ?: "", cfg.mtReplay, packDir,
+                                  cfg.lowMem, cfg.container)
             } else {
                 toast(locale.str(R.string.builds_needs_storage)); askStorage()
             }

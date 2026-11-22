@@ -206,7 +206,7 @@ Every game the porter knows — the ones ported, the ones still in progress, and
 3. **Builds tab**: tap **Choose a game file**, pick the base game (the updates and the DLC next to it are taken along), then tap **Start a port**. The port runs in the background; the notification bar keeps the progress.
 4. **Library tab**: when the port is done the data pack is in the library — tap **Run** and play.
 
-The port's own options sit on the Builds tab too: **Touch game** (the on-screen gamepad starts hidden), **60 fps** and **Experimental port** (a game that is not adapted yet).
+The port's own options sit on the Builds tab too: **Touch game** (the on-screen gamepad starts hidden), **60 fps**, **Experimental port** (a game that is not adapted yet) and **Read the game file in place** (the game's own NSP/XCI is read where it is, with no unpacked copy: keep the file there, or the game will not start; NSP and XCI, not NSZ/XCZ).
 
 ### Route two: port on a computer
 
