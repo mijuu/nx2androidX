@@ -226,6 +226,11 @@ class MainActivity : ComponentActivity() {
                 toast(locale.str(R.string.shortcut_added))
             } else toast(locale.str(R.string.shortcut_unsupported))
         },
+        // 直接读取的包：把游戏文件重新关联到它现在的位置（只在没移植的时候）
+        onRelinkPack = { pack, game ->
+            if (port.running) toast(locale.str(R.string.runtime_busy))
+            else PortService.relink(this, pack.absolutePath, game.absolutePath, prefs.keys)
+        },
         onToast = { toast(it) },
         version = { versionName() },
         keys = { prefs.keys },

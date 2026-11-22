@@ -42,6 +42,15 @@ class PortRunner(
     }
 
     /**
+     * Points a direct-read pack at the game's files where they are now: only the pack's env.txt changes (the porter's
+     * relink) — the shaders and the rewritten code are the same game, not built again.
+     */
+    fun relink(pack: String, gameFile: String, keys: String, onExit: (Int) -> Unit): Thread {
+        val args = mutableListOf("-m", "porter", "relink", pack, gameFile, "-k", keys)
+        return start(args, {}, onExit = onExit)
+    }
+
+    /**
      * The phone's own language: the pack follows it when the game has it (the porter takes it as a wish: a game
      * without it is packed in its own first language, as before).
      */

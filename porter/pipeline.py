@@ -319,6 +319,74 @@ def volume_of(path):
     return dev or None
 
 
+def container_aoc_env(dlc, pack, work):
+    """The DLC of an in-place pack: (env rows, {name in the pack: source}). The host reads a DLC from DM_AOC_DIR/<index>.nsp, so the files
+    already named by their index in one folder are read where they are; the others (a download's [DLC][…].nsp, a decompressed copy) go into
+    the pack as aoc/<index>.nsp. dlc: {index: path}"""
+    if not dlc: return [], {}
+    items = sorted(dlc.items())
+    dirs = {str(p.parent) for _, p in items}
+    work = str(Path(work).resolve()) + os.sep
+    named = len(dirs) == 1 and all(p.name == f'{i}.nsp' for i, p in items) \
+        and not any(str(p.resolve()).startswith(work) for _, p in items)
+    if named: return [f'DM_AOC_DIR={dirs.pop()}'], {}
+    return [f'DM_AOC_DIR={Path(pack) / "aoc"}'], {f'aoc/{i}.nsp': p for i, p in items}
+
+
+def relink(pack, game, keys=None):
+    """Point an in-place pack (--romfs-container) at the game's own files where they are now: the base, the update and the DLC are found
+    from the picked file's folder as a port finds them, and only env.txt (and the pack's own aoc/ copies) changes — the shaders and the
+    rewritten code are the same game, not built again"""
+    pack, game = Path(pack), Path(game)
+    man_file = pack / datapack.MANIFEST
+    man = datapack.read_manifest(pack)
+    if man is None: raise BuildError(f'{pack}: no readable {datapack.MANIFEST}')
+    if not man.get('container'): raise BuildError(f'{pack}: this pack does not read the game in place (port with --romfs-container to relink it)')
+    keys = keys or config.load().get('keys')
+    if not keys or not Path(keys).is_file(): raise BuildError('no prod.keys: pass -k <prod.keys>')
+    app, fam = nsp.scan_nsps(game.parent, dumps.EXTS, keys, game)
+    if f'{app:016X}'.lower() != str(man.get('title_id', '')).lower():
+        raise BuildError(f'{game.name} is {app:016X}, not the pack\'s game ({man.get("title_id")})')
+    base = fam['base']
+    ups = sorted(fam['updates'], key=lambda u: u[0] or 0); upd = ups[-1][1] if ups else None
+    version = str(man.get('version') or '')
+    if version not in ('', 'v0') and not upd:
+        raise BuildError(f'the pack is {version}: pick the folder that holds its update (the update NSP beside the base)')
+    if version == 'v0' and upd:
+        raise BuildError('the pack was built without an update: port it again to take one')
+    dlc = {}
+    for tid, _, p in fam['dlc']:
+        if Path(p).suffix.lower() in ('.nsz', '.xcz'): raise BuildError(f'{Path(p).name}: only NSP / XCI files are read in place (decompress it first)')
+        dlc.setdefault(tid & 0xFFF, Path(p))
+    for p in (base, upd):
+        if p and Path(p).suffix.lower() in ('.nsz', '.xcz'): raise BuildError(f'{Path(p).name}: only NSP / XCI files are read in place (decompress it first)')
+    rows = [f'DM_ROMFS_CONTAINER={base}'] + ([f'DM_ROMFS_UPDATE={upd}'] if upd else []) + [f'DM_PROD_KEYS={keys}']
+    aoc_rows, aoc_files = container_aoc_env(dlc, pack, pack)
+    rows += aoc_rows
+    env_file = pack / 'env.txt'
+    try: lines = env_file.read_text(encoding='utf-8').splitlines()
+    except OSError: lines = []
+    replaced = {'DM_ROMFS_CONTAINER', 'DM_ROMFS_UPDATE', 'DM_AOC_DIR', 'DM_PROD_KEYS'}
+    keep = [ln for ln in lines if ln.startswith('#') or ln.split('=', 1)[0].strip() not in replaced]
+    tmp = env_file.with_name('env.txt.part')
+    tmp.write_text('\n'.join(keep + rows) + '\n', encoding='utf-8', newline='\n'); os.replace(tmp, env_file)
+    aoc_dir = pack / 'aoc'
+    if aoc_files:
+        aoc_dir.mkdir(parents=True, exist_ok=True)
+        for name, src in aoc_files.items():
+            dst = pack / name; part = dst.with_name(dst.name + '.part')
+            with src.open('rb') as f, part.open('wb') as g: shutil.copyfileobj(f, g)
+            os.replace(part, dst)
+        for f in aoc_dir.glob('*.nsp'):   # a DLC the player took out is not the pack's any more
+            if f'aoc/{f.name}' not in aoc_files: f.unlink()
+    files = [p for p in pack.rglob('*') if p.is_file()]
+    man['files'], man['bytes'] = len(files), sum(p.stat().st_size for p in files)
+    man_file.write_text(json.dumps(man, indent=2), encoding='utf-8')
+    say(f'{pack.name}: reads {Path(base).name}' + (f' + {Path(upd).name}' if upd else '') + (f' + {len(dlc)} DLC' if dlc else '')
+        + (' where they are' if not aoc_files else f'; {len(aoc_files)} DLC copied into the pack'))
+    return {'base': str(base), 'update': str(upd) if upd else None, 'dlc': sorted(dlc)}
+
+
 def oodle_where(tools):
     """Where the game's own Oodle decoder runs: 'local' when the porter is on the phone app (the device is this machine), 'device' when adb and a device are there, else None"""
     if on_android(): return 'local'
@@ -1412,7 +1480,13 @@ class Port:
                 raise BuildError('--romfs-container on the phone reads NSP / XCI files where they are; an NSZ / XCZ is decompressed into the build folder, '
                                  'which the game would then need: port without this option, or give the folder the NSP / XCI')
             cont_env = [f'DM_ROMFS_CONTAINER={base}', f'DM_PROD_KEYS={key}'] + ([f'DM_ROMFS_UPDATE={upd}'] if upd else [])
-            if any(n.startswith('aoc/') for n, _, _ in cp): say('[RED] the DLC NSPs beside the dump are not read in place on the phone yet: the game runs without its DLC')
+            aoc = {}
+            for n, p, _ in cp:
+                if n.startswith('aoc/'): aoc[int(Path(n).stem)] = Path(p)   # the same DLC may sit twice (the folder and its aoc/ subfolder): one per index
+            aoc_rows, aoc_files = container_aoc_env(aoc, dst, self.work)
+            cont_env += aoc_rows
+            files.update(aoc_files)
+            if aoc: say(f'{len(aoc)} DLC in place: ' + ('read where they are' if not aoc_files else 'copied into the pack, one <index>.nsp each'))
         elif getattr(self.ap, 'romfs_zstd', False) and romfs.is_dir():   # android.tsv romfs zstd: packed copies of the files that compress, made once into the build folder; the rest stay links to the extraction
             PROG.set(step='compressing the RomFS', done=0, total=1, unit='B')
             nf, npk, raw, out = romfs_pack.pack_tree(romfs, self.aw / 'romfs_zstd' / self.pkg_ver, self.o.jobs, progress=lambda d, t: PROG.set(step='compressing the RomFS', done=d, total=t, unit='B'))

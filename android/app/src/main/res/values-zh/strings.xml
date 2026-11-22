@@ -485,6 +485,9 @@
     <string name="lib_remove_item_partial">半成品数据包</string>
     <string name="lib_remove_item_runtime">App 私有目录里的运行库</string>
     <string name="lib_pin_shortcut">发送到桌面</string>
+    <string name="lib_relink_action">重新关联游戏文件</string>
+    <string name="lib_relink_done">已关联到新的游戏文件</string>
+    <string name="lib_relink_failed">重新关联失败（退出码 %1$d）</string>
     <string name="shortcut_added">已发送到桌面。</string>
     <string name="shortcut_unsupported">这个设备的桌面不支持添加快捷方式。</string>
     <string name="shortcut_disabled">这个游戏已不在游戏库里。</string>
