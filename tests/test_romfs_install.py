@@ -42,6 +42,18 @@ class ContainerPack(unittest.TestCase):
         finally:
             shutil.rmtree(t, ignore_errors=True)
 
+    def test_app_mode_container_lists_the_players_files(self):   # the phone: no push list, env.txt names the files where the player keeps them
+        t = Path(tempfile.mkdtemp(prefix='nx2a_test_appcont_'))
+        try:
+            p = profiles.load(NEO)
+            man = datapack.build(t / 'out-data', profile=p, version='v1', display='1.0', patched=None, romfs=None, shaders=None, container=True,
+                                 env=['DM_ROMFS_CONTAINER=/sdcard/game.nsp', 'DM_PROD_KEYS=/sdcard/prod.keys'])
+            self.assertTrue(man['container']); self.assertNotIn('push', man)
+            env = (t / 'out-data/env.txt').read_text()
+            for row in ('DM_ROMFS_CONTAINER=/sdcard/game.nsp', 'DM_PROD_KEYS=/sdcard/prod.keys'): self.assertIn(row, env)
+        finally:
+            shutil.rmtree(t, ignore_errors=True)
+
     def test_install_push_finds_the_game_beside_the_pack(self):   # the manifest names a game file beside the pack; the installer looked inside it instead (SRW30's 14 GB XCI)
         t = Path(tempfile.mkdtemp(prefix='nx2a_test_push_'))
         try:
