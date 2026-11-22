@@ -6,6 +6,7 @@
 //   --allow-damaged writes those files as read instead and only lists them (Super Mario Galaxy's base NSP with 147 MB zeroed: its two prologue WebM movies).
 // Integrity failures outside the individual-file handlers (e.g. RomFS metadata) stop immediately with exit code 3 and the LibHac reason, even with --allow-damaged.
 // An unreadable NCA header stops with exit code 4, naming the input container and its NCA entry; --allow-damaged does not bypass it.
+// A prod.keys that lacks an NCA's key stops with exit code 5, naming the key (never its value).
 // Add-on content: nx_extract <prod.keys> --aoc <DLC NSP> <output dir> writes the RomFS of the DLC's data NCA to <output dir> (the packing script puts it at aoc/<index>/, the host mounts it through DM_AOC_DIR).
 // System data: nx_extract <prod.keys> --sysdata <firmware dir> <title ID hex> <output dir> writes the RomFS of that title's data NCA, found among the .nca files of a firmware dump
 // (a console's NAND SYSTEM Contents/registered, as DBI's MTP mode shows it): Mario Kart 8 Deluxe builds its Mii heads from MiiModel, 0100000000000802.
@@ -46,6 +47,10 @@ static class P {
         catch (NcaOpenException e) {
             Console.Error.WriteLine($"[RED] {e.Message}");
             return 4;
+        }
+        catch (MissingKeyException e) {
+            Console.Error.WriteLine($"[RED] this prod.keys does not hold the key this game's NCA needs: {e.Message.Replace('\n', ' ')} (use a prod.keys from the firmware the game was built for)");
+            return 5;
         }
         catch (HorizonResultException e) when (HashError(e)) {
             Console.Error.WriteLine($"[RED] extraction stopped by a filesystem integrity check: {e.Message}");
