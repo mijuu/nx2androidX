@@ -262,6 +262,17 @@ class GameLibraryRepositoryImpl @Inject constructor(
         return PortablePackFiles.export(pack.pack, pack.romfsAt, targetDir, entry.label, onProgress)
     }
 
+    /** A container pack's backup: a zip that carries no game data (a relink brings it back). */
+    override fun exportZipPack(entry: GameEntry, targetDir: File,
+                               onProgress: (PortablePack.Progress) -> Unit): PortablePack.Result {
+        val pack = entry.pack ?: return PortablePack.Result.fail("no_pack")
+        return PortablePackZip.export(pack.pack, targetDir, entry.label, onProgress)
+    }
+
+    /** A backup lands in the app's own ports folder, as a container pack that needs one relink. */
+    override fun importZipPack(zip: File, onProgress: (PortablePack.Progress) -> Unit): PortablePack.Validation =
+        PortablePackZip.import(zip, paths.ports, onProgress)
+
     private fun loadMemories() {
         packPaths = readMap(LIB_PACKS)
         sources = readMap(LIB_SOURCES)
