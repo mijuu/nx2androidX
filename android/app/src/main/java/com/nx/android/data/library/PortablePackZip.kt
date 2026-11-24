@@ -113,8 +113,10 @@ object PortablePackZip {
                 val titleId = manifest.optString("title_id")
                 if (!titleId.matches(Regex("[0-9A-Fa-f]{16}"))) return PortablePack.Validation(false, "bad_title_id")
                 val root = prefix.trimEnd('/').substringAfterLast('/')
-                    .ifBlank { PortablePack.folderName(manifest.optString("name")) + "-data" }
-                val final = File(portsDir, PortablePack.folderName(root))
+                    .ifBlank { PortablePack.folderName(manifest.optString("name")) }
+                // the library only sees packs named `*-data` (the scanner's test): a zip's root folder is the game's plain name
+                val folder = PortablePack.folderName(root)
+                val final = File(portsDir, if (folder.endsWith("-data")) folder else "$folder-data")
                 if (final.exists()) return PortablePack.Validation(false, "exists", pack = final)
                 val total = inside.sumOf { it.size.coerceAtLeast(0) }
                 if (portsDir.usableSpace in 1 until total + (64L shl 20)) {

@@ -28,6 +28,7 @@ class PortablePackZipTest {
         File(pack, "aoc/2.nsp").writeBytes(ByteArray(128))
         File(pack, "saves").mkdirs()
         File(pack, "saves/backup.zip").writeText("the player's own backup")
+        File(pack, "icon.png").writeBytes(ByteArray(64))   // the cover the library shows
         val manifest = JSONObject()
             .put("title_id", "0100B8A026F14000")
             .put("name", "Test Game")
@@ -66,6 +67,7 @@ class PortablePackZipTest {
         val all = entries(zip)
         assertTrue(all.keys.any { it.endsWith("/mods/main.nso") })
         assertTrue(all.keys.any { it.endsWith("/shaders.dmsv") })
+        assertTrue(all.keys.any { it.endsWith("/icon.png") })   // the library's cover travels
         assertFalse(all.keys.any { it.contains("/aoc/") })
         assertFalse(all.keys.any { it.contains("/saves/") })
         // the manifest no longer counts the DLC copy it left out
@@ -91,8 +93,13 @@ class PortablePackZipTest {
         assertTrue(v.failure ?: "", v.ok)
         assertTrue(v.container)
         val landed = v.pack!!
-        assertEquals(File(ports, "Test Game").absolutePath, landed.absolutePath)
+        // the library only scans `*-data` folders: the plain name in the zip must not leave the game invisible
+        assertEquals(File(ports, "Test Game-data").absolutePath, landed.absolutePath)
         assertTrue(landed.isDirectory)
+        assertTrue(File(landed, "icon.png").isFile)
+        val found = LibraryFileScanner.outIndex(ports)
+        assertEquals(1, found.size)
+        assertEquals(File(landed, "icon.png"), found.getValue("0100B8A026F14000").icon)
         assertFalse(ports.listFiles()!!.any { it.name.endsWith(".partial") })
         val env = File(landed, PortablePack.ENV).readText()
         assertTrue(env.contains("DM_AOC_DIR=${landed.absolutePath}/aoc"))
