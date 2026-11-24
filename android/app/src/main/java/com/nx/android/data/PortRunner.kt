@@ -49,7 +49,7 @@ class PortRunner(
      */
     fun relink(pack: String, gameFile: String, keys: String, onExit: (Int) -> Unit): Thread {
         val args = mutableListOf("-m", "porter", "relink", pack, gameFile, "-k", keys)
-        return start(args, {}, onExit = onExit)
+        return start(args, onExit)
     }
 
     /**

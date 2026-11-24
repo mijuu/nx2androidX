@@ -251,7 +251,7 @@ class PortService : Service() {
         if (port.running) return START_NOT_STICKY   // a port owns the tools: not while one is running
         val handler = Handler(mainLooper)
         lateinit var taskRunner: PortRunner
-        taskRunner = PortRunner(environmentSetup, guestLauncher, locale) { line ->
+        taskRunner = PortRunner(environmentSetup, guestLauncher, locale::str) { line ->
             handler.post { if (runner === taskRunner) AppLog.line(line) }
         }
         runner = taskRunner
